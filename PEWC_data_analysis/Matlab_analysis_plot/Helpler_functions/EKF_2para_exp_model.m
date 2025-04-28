@@ -1,0 +1,45 @@
+% This program is to calculate EKF result by hand 
+% The estimation is limited to Exponetial model 
+% f=a+b*exp(ck)
+% estimation state xk=[ak+bk*exp(ckk) ak bk ck]
+% Fk= [0 1 exp(ck) kbkexp(ckk); ...] 
+function [X_est] = EKF_2para_exp_model(x0,Pk,zk,time,Qk,Rk)
+% initialize first estimation 
+data_length=length(zk);
+Pkk_1=10*eye(3);
+x_hat=x0; %initial guess 
+X_est=zeros(data_length,3);
+x_forecast=zeros(3,1);
+z=zeros(3,1);
+
+% EKF start  
+for i=1:data_length
+% time stamps 
+k=time(i);
+% first, predict next step 
+x1=x_hat(2)*exp(x_hat(3)*k);
+x2=x_hat(2);
+x3=x_hat(3);
+x_forecast=[x1;x2;x3];%+sqrt(state_noise).*randn(3,1);
+
+% data to observe 
+y_yuce=x1;
+
+% State Matrix 
+F=zeros(3,3);
+F(1,:)=[0 exp(x3*k) k*x2*exp(x3*k)];
+F(2,:)=[0 1 0 ];F(3,:)=[0 0 1 ];
+Pkk_1=F*Pk*F'+Qk;
+
+% Observer matrix 
+H=[1 0 0 ];
+
+Kk=Pkk_1*H'/(H*Pkk_1*H'+Rk);
+x_hat=x_forecast+Kk*(zk(i)-y_yuce);
+Pk=(eye(3)-Kk*H)*Pkk_1;
+X_est(i,:)=x_hat;
+end 
+
+
+end
+

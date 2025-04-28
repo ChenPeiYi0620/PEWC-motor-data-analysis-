@@ -12,8 +12,9 @@ def read_rul_data(filepath, default_spd=0, default_trq=0, default_pwr=0, default
     if os.path.exists(filepath):
         if filepath.endswith('.parquet'):
             df_loaded = pd.read_parquet(filepath)
+            tt=np.array(df_loaded["Voltage alpha"].iloc[0])
             data_read = {
-                "Unix Time": [df_loaded["Unix Time"].iloc[0]],
+                "Unix Time": df_loaded["Unix Time"].iloc[0],
                 "Speed": [df_loaded["Speed"].iloc[0]],
                 "Torque": [df_loaded["Torque"].iloc[0]],
                 "Power": [df_loaded["Power"].iloc[0]],

@@ -1,3 +1,4 @@
+ #%%
 # This program do the same thing as Data handle but the motor status is calculated in here
 
 import math
@@ -8,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Motor_global_vars
 
-
 # rul result operation (still developing)
 def rul_result():
     # use dictionary to storage RUL result
@@ -17,18 +17,16 @@ def rul_result():
     return rul_est
 
 
-# simple fft calculation
-def fft_test(signal_real, signal_imag, sampling_rate):
-    T = 1 / sampling_rate
-    N = len(signal_real)
-    freqs = np.fft.fftfreq(N, T)
-    freqs = np.fft.fftshift(freqs)
-    real_part = np.array(signal_real)
-    imaginary_part = np.array(signal_imag)
-    complex_array = real_part + 1j * imaginary_part
-    fft_result = np.fft.fft(complex_array)
-    fft_result = np.fft.fftshift(fft_result / len(fft_result))
-    return freqs, np.abs(fft_result)
+def fft_test(signal_real: np.ndarray, signal_imag: np.ndarray, sampling_rate: float):
+    signal_complex = signal_real + 1j * signal_imag
+    signal_complex = signal_complex.flatten()
+    N = len(signal_complex)
+    fft_vals = np.fft.fft(signal_complex, n=N)
+    fft_vals_shifted = np.fft.fftshift(fft_vals)
+    freqs = np.fft.fftshift(np.fft.fftfreq(N, d=1/sampling_rate))
+    # fft_result = np.abs(fft_vals_shifted) / N
+    fft_result=fft_vals_shifted / N
+    return freqs, fft_result
 
 
 # get motor operating condition
@@ -46,47 +44,93 @@ def get_motor_cond_list(motor_cond_raw):
 
 
 # get cn diagnosis result
-def get_cn_sts_list(i_alpha, i_beta):
+def get_cn_sts_list(i_alpha, i_beta, debug=False, threshold=0.05):
 
-    # normalize the current data
+     # normalize the current data
     i_alpha = i_alpha/Motor_global_vars.Base_current
     i_beta = i_beta/Motor_global_vars.Base_current
 
     # calculate winding fault result by raw current
     L = len(i_alpha)  # data length
     #  calculate fft
-    freqs, fft_result = fft_test(i_alpha, i_beta, Motor_global_vars.sampling_rate)
+    freqs, fft_result_cplx = fft_test(i_alpha, i_beta, Motor_global_vars.sampling_rate)
+    
+    fft_result=np.abs(fft_result_cplx)  # get the magnitude of fft result
+    
     # find frequency index of characteristic frequencies
     fund_freq_idx = np.argmax(fft_result)
     minus1_freq_idx = L - fund_freq_idx
     minus1_freq = freqs[minus1_freq_idx]
     fund_freq = freqs[fund_freq_idx]
-    # find amplitude of characteristic frequencies
-    fund_freq_amp = np.max(fft_result)
-    minus1_freq_amp = fft_result[L - fund_freq_idx]
+    
+    # find characteristic frequencies components
+    fund_freq = fft_result_cplx[fund_freq_idx]
+    minus1_freq = fft_result_cplx[minus1_freq_idx]
+
+    # get phase angle of fundamental and negative sequence components
+    fund_phase = np.angle(fund_freq, deg=True) 
+    minus1_phase = np.angle(minus1_freq, deg=True)
+    phase_offset = minus1_phase + fund_phase
+    
+    # find amplitude
+    fund_freq_amp=np.abs(fund_freq)
+    minus1_freq_amp=np.abs(minus1_freq)
+    
     # calculate CN value
     CN_value = minus1_freq_amp / fund_freq_amp
+    
+    # calculate CN value as complex number with CN_value as radius and phase_offset as angle
+    CN_value_complex = CN_value * np.exp(1j * np.deg2rad(phase_offset))
+    
     # magnitude to rms
     motor_cn_sts = {
-        'Icn_x': CN_value*32768+32767,
-        'Icn_y': 0,
+        'Icn_x': CN_value_complex.real*32768+32767,
+        'Icn_y': CN_value_complex.imag*32768+32767,
         'I_rms': fund_freq_amp*32768+32767,
     }
+    if debug:
+        # plot the fft result
+        plt.figure(figsize=(10, 5))
+        # plt.stem(freqs, fft_result)
+        plt.plot(freqs, 20*np.log10(fft_result))
+        #  plot the characteristic frequencies
+        plt.axvline(x=freqs[fund_freq_idx], color='r', linestyle='--', label=f"Fundamental frequency:{fund_freq:.1f} Hz")
+        plt.axvline(x=freqs[minus1_freq_idx], color='r', linestyle='--', label=f"-1 frequency:{minus1_freq:.1f} Hz")
+        plt.plot(freqs[fund_freq_idx], 20*np.log10(fund_freq_amp), 'ro', label=f"Fundamental frequency Amplitude:{fund_freq_amp:.6f} A")
+        plt.plot(freqs[minus1_freq_idx], 20*np.log10(minus1_freq_amp), 'rx', label=f"-1 frequency Amplitude:{minus1_freq_amp:.6f} A")
+        plt.axhline(y=20*np.log10(fund_freq_amp*0.05), color='k', linestyle='--', label='threshold')
+        plt.xlim(-1000, 1000)
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('FFT Amplitude (dB)')
+        plt.title(f'FFT Result, CN Value: {CN_value:.6f}')
+        plt.grid()
+        plt.legend()
+        plt.show(block=False)
+        
+        # plot the CN xy plot result
+        plt.figure(figsize=(10, 5))
+        # Draw a circle with radius = threshold
+        theta = np.linspace(0, 2*np.pi, 100)
+        circle_x = threshold * np.cos(theta)
+        circle_y = threshold * np.sin(theta)
+        plt.plot(circle_x, circle_y, 'k--', alpha=0.5)
+        # Plot the CN value as a complex number (x marker)
+        plt.plot([CN_value_complex.real], [CN_value_complex.imag], 'rx', markersize=10, label=f'CN Value: {CN_value:.3f}∠{phase_offset:.1f}°')
 
-    # # fill data to winding fault report
-    # motr_cn_list = []
-    # cn_range = Motor_global_vars.cn_range_scale
-    # motr_cn_list.append(CN_value)
-    # motr_cn_list.append(0)
-    # cn_thres = CN_value / cn_range * 100
-    # motr_cn_list.append(CN_value / cn_range)
-    # motr_cn_list.append(int(motr_cn_list[2] > 100))
-    # motr_cn_list.append(cn_range)
+        plt.xlim(-(threshold+0.02), (threshold+0.02))
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('FFT Amplitude (dB)')
+        plt.title(f'FFT Result, CN Value: {CN_value:.6f}')
+        plt.grid()
+        plt.legend()
+        plt.show(block=False)
 
     return motor_cn_sts, fund_freq, minus1_freq
 
+
 # get the torque estimation
-def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False):
+def estimate_torque(data_read, speed_v=3530, debug=False):
+
     """
     Estimate the motor torque based on voltage and current inputs.
     :param v_a_raw: Voltage alpha component
@@ -98,10 +142,10 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
     :return: Estimated torque array
     """
 
-    v_a_raw = np.array(v_a_raw)
-    v_c_raw = np.array(v_c_raw)
-    i_alpha = np.array(i_alpha)
-    i_beta  = np.array(i_beta)
+    v_a_raw = np.array(data_read["Voltage alpha"])
+    v_c_raw = np.array(data_read["Voltage beta"])
+    i_alpha = np.array(data_read["Current alpha"])
+    i_beta  = np.array(data_read["Current beta"])
 
     # offset calibration
     v_a_raw = v_a_raw - np.mean(v_a_raw)
@@ -150,10 +194,10 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
 
     # Compute necessary parameters
     fs = Motor_global_vars.sampling_rate  # Sampling rate
-    flux_rs = 0.1  # Motor stator resistance
+    flux_rs = 0.5  # Motor stator resistance
     tsim = 1 / fs  # Time step
 
-    we = (speed_v / 60) * (np.pi * 2)*2 # electrical angular velocity
+    we = (speed_v / 60) * (np.pi * 2) # electrical angular velocity
     coef = 0.2
     cross_freq = 15.0
 
@@ -191,9 +235,10 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
 
     # Torque estimation
     torque_v = 1.5 * 2 * ((np.array(alpha_compensated_values) * i_beta) - (np.array(beta_compensated_values) * i_alpha))
+    torque_avg = np.mean(np.abs(torque_v[-500:]))
     # Power and efficiency estimation
-    Power_M= np.mean(torque_v[-Motor_global_vars.data_length:]*we)
-    Power_E = np.mean(3 / 2 * (v_alpha * i_alpha + v_beta * i_beta))
+    Power_M= torque_avg*speed_v*2*np.pi/60
+    Power_E = 1.5*np.mean((v_alpha * i_alpha + v_beta * i_beta))
     efficiency = Power_M / Power_E * 100
     power_sts = {
         'Power_M': Power_M,
@@ -203,12 +248,12 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
     }
 
     if debug :
+        date_time=pd.to_datetime(data_read["Unix Time"], unit='s').strftime('%Y-%m-%d %H:%M:%S')
 
         print("Estimated Torque:", np.mean(torque_v[-Motor_global_vars.data_length:]))
         # print result
         for key, value in power_sts.items():
             print(f"{key}: {value}")
-
         time = np.arange(len(v_alpha)) * tsim
 
         # plot the flux values
@@ -218,7 +263,7 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
         plt.xlabel('Time (s)')
         plt.ylabel('Flux Values')
         plt.legend()
-        plt.title('Flux Values')
+        plt.title('Flux Values'+date_time)
         plt.grid()
         plt.show(block=False)
 
@@ -255,29 +300,21 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
         plt.grid()
         plt.show(block=False)
 
-        # # plot vectors for torque estimation
-        # plt.figure(figsize=(10, 5))
-        # idx = -1  # time index
-        # x1, y1 = 0, 0  # origin
-        # x2, y2 = i_alpha[idx], i_beta[idx]  # current vector
-        # x3, y3 = (alpha_compensated_values[idx],  # flux vector
-        #           beta_compensated_values[idx])
-        # # 繪製線段
-        # plt.plot([x1, x2], [y1, y2], marker='o', linestyle='-', color='b')
-        # plt.plot([x1, x3], [y1, y3], marker='x', linestyle='-', color='r')
-        # # 設定圖形標籤
-        # plt.xlabel('X-axis')
-        # plt.ylabel('Y-axis')
-        # plt.title('Motor vector plot ')
-        # plt.show(block=False)
-
         # plot torque estimation
         plt.figure(figsize=(10, 5))
         plt.plot(time, torque_v, label='Torque (Voltage Model)')
+        if len(torque_v) > 2500:
+            plt.plot(time[2250:2500], torque_v[2250:2500], label='monitored torque region', color='red')
+            torque_avg=np.mean(torque_v[2250:2500])
+        else:
+            plt.plot(time[-500:], torque_v[-500:], label='monitored torque region', color='red')
+            torque_avg=np.mean(torque_v[-500:])
+            
+        plt.axhline(y=torque_avg, color='k', linestyle='--', label='Averaged torque')
         plt.xlabel('Time (s)')
         plt.ylabel('Torque (N.m)')
         plt.legend()
-        plt.title('Torque Estimation')
+        plt.title(f'Torque Estimation :{torque_avg:.2f} (N.m)')
         plt.grid()
         plt.show(block=False)
 
@@ -297,7 +334,7 @@ def estimate_torque(v_a_raw, v_c_raw, i_alpha, i_beta, speed_v=1800, debug=False
 
         plt.title('EMF Alpha - Raw vs Filtered')
         plt.grid()
-        plt.show()
+        plt.show(block=False)
     # return the torque value and the estimated flux
     return torque_v, alpha_compensated_values, beta_compensated_values, v_alpha, v_beta, power_sts
 
@@ -366,11 +403,14 @@ def calculate_thd_with_fftshift(fft_complex):
     thd = np.sqrt(harmonic_power) / V1  # 轉換為百分比
 
     return thd
-
+    
+    
+   #%%
 if __name__ == "__main__":
-
+ 
     # read the data while skip the first 2 row to avoid parse error
     df = pd.read_csv('../PEWC dataset/read test data/PEWC_test_2.csv', skiprows=1)
+    # df = pd.read_csv('../PEWC dataset/read test data/PEWC_ver2_0217_RUL2.parquet', skiprows=1)
     # df = pd.read_csv('IPC_test_data/RUL_Data_5_962.csv', skiprows=1)
 
     v_a = df['V_alpha'].to_numpy()
@@ -380,10 +420,13 @@ if __name__ == "__main__":
 
     motor_cn_sts, fund_freq, minus1_freq = get_cn_sts_list(i_alpha, i_beta)
     print(f"fundamental frequency: {fund_freq} Hz")
+    
     # print result
     for key, value in motor_cn_sts.items():
         print(f"{key}: {value}")
+    #%%
     torque, alpha_compensated_values, beta_compensated_values, v_alpha, v_beta, power_sts = estimate_torque(v_a, v_c, i_alpha, i_beta, debug=True)
+    #%%
 
 
 

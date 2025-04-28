@@ -1,0 +1,533 @@
+classdef RLS_functionsContainerPEWC
+    methods (Static)
+        %% normal rls
+        function [X_rls,y_hat_RLS,P]=RLS(y,h,Beta,P,x_initial)
+            N=length(y);K=[];[~,x0_num]=size(h);P=P*eye(x0_num);P_last=[];
+            X_rls=zeros(x0_num,N);X_rls(:,1)=x_initial;
+            y_hat_RLS=zeros(1,N);
+            for i=1:N
+                if i>1
+                    % update K (normal)
+                    K=(P_last*h(i,:)')/(Beta+h(i,:)*P_last*h(i,:)');
+                    % update theta
+                    delt_theta=K*(y(i)-h(i,:)*X_rls(:,i-1));
+                    X_rls(:,i)=X_rls(:,i-1)+delt_theta;
+                    % update P (normal)
+                    P=(eye(x0_num)-K*h(i,:))*P_last/Beta;
+                    P_last=P;
+                    %calculate RLS output
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                else
+                    P_last=P;
+                end
+            end
+        end
+        %% normal rls with boundary
+        function [X_rls,y_hat_RLS,P]=RLS_BD(y,h,Beta,P,x_initial,Boundary)
+            % boundary is | X1_upperbond X2_upperbond ...|
+            %             | X1_lowerbond X2_upperbond ...|
+            skip_P=0; % flag for skip P updating
+            N=length(y);K=[];[~,x0_num]=size(h);P=P*eye(x0_num);P_last=[];
+            X_rls=zeros(x0_num,N);X_rls(:,1)=x_initial;
+            y_hat_RLS=zeros(1,N);
+            for i=1:N
+                if i>1
+                    % update K (normal)
+                    K=(P_last*h(i,:)')/(Beta+h(i,:)*P_last*h(i,:)');
+                    % update theta
+                    delt_theta=K*(y(i)-h(i,:)*X_rls(:,i-1));
+                    %                     for j=1:length(x_initial)
+                    j=2;
+                    % for lower bond
+                    if X_rls(j,i-1)>Boundary(1,j) || (X_rls(j,i-1)==Boundary(1,j) && delt_theta(j)>0)
+                        skip_P=0;
+                        %                             % for upper bond
+                        %                         elseif X_rls(1,i-1)==Boundary(2,j) && delt_theta(j)>0
+                        %                             delt_theta(j)=0; skip_P=1;
+                    else
+                        delt_theta(j)=0; skip_P=1;
+                    end
+                    %                     end
+
+                    X_rls(:,i)=X_rls(:,i-1)+delt_theta;
+                    if skip_P~=1
+                        % update P (normal)
+                        P=(eye(x0_num)-K*h(i,:))*P_last/Beta;
+                        P_last=P;
+                    end
+                    %calculate RLS output
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                else
+                    P_last=P;
+                end
+            end
+        end
+
+        %% normal rls (one line code)
+        function [X_rls,y_hat_RLS,P]=RLS_oneline(y,h,Beta,P)
+            [~,x0_num]=size(h);
+            N=length(y);K=[];P=P*eye(x0_num);
+            X_rls=zeros(x0_num,N);y_hat_RLS=zeros(1,N);
+            for i=1:N
+                if i>1
+                    % update P(k)
+                    P=1/Beta.*(P-P*h(i-1,:)'*h(i-1,:)*P/(Beta+h(i-1,:)*P*h(i-1,:)'));
+                    %calculate RLS output
+                    X_rls(:,i)=X_rls(:,i-1)+P*h(i-1,:)'*(y(i)-y_hat_RLS(i-1));
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                end
+            end
+        end
+        %% normal rls (one output)
+        function [X_rls,y_hat_RLS,P]=RLS_oneout(y,h,Beta,P)
+            [~,x0_num]=size(h);P=P*eye(x0_num);
+            N=length(y);K=[];
+            X_rls=zeros(x0_num,N);y_hat_RLS=zeros(1,N);
+            for i=1:N
+                if i>1
+                    % update Gk
+                    Gk=P*h'/(Beta+h*P*h');
+                    % update Pk
+                    P=(P-Gk*h*P)/Beta;
+                    %calculate RLS output
+                    X_rls(:,i)=X_rls(:,i-1)+Gk*(y(i)-h*X_rls(:,i-1));
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                end
+            end
+        end
+        %% normal rls with covariance resseting
+        function [X_rls,y_hat_RLS,P,MSE_RLS]=RLS_covR(y,h,Beta,P,R0,x_initial)
+            N=length(y);K=[];[~,x0_num]=size(h);P=P*eye(x0_num);P_last=[];
+            X_rls=zeros(x0_num,N);X_rls(:,1)=x_initial;
+            y_hat_RLS=zeros(1,N);SE=0;MSE_RLS=zeros(3,N);
+            % initila y_guess
+%             y_hat_RLS(1)=y(1);
+            y_hat_RLS(1)=h(1,:)*x_initial;
+            for i=1:N
+                if i>1
+                    % update K (normal)
+                    K=(P_last*h(i,:)')/(Beta+h(i,:)*P_last*h(i,:)');
+                    % update theta
+                    delt_theta=K*(y(i)-h(i,:)*X_rls(:,i-1));
+                    X_rls(:,i)=X_rls(:,i-1)+delt_theta;
+                    % update P (normal)
+                    P=(eye(x0_num)-K*h(i,:))*P_last/Beta;
+                    % if ||P||>=R0, don't update P
+                    if (norm(P)>=R0)
+                        P=P_last;
+                    end
+                    P_last=P
+                    %calculate RLS output
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                    SE=SE+(y_hat_RLS(i)-y(i))^2;
+                    % calculate MSE of parameters and estimation error
+                    %                     sum_x1=sum_x1+X_rls(1,i);
+                    %                     sum_x2=sum_x2+X_rls(2,i);
+                    MSE_RLS(1,i)=SE/i;
+                    MSE_RLS(2,i)=SE/i;
+                    MSE_RLS(3,i)=SE/i;
+
+                else                    
+                    P_last=P
+                end
+
+            end
+        end
+        %% lower-bounded normal rls with covariance resseting
+        function [X_rls,y_hat_RLS,P,MSE_RLS]=RLS_covR_bond(y,h,Beta,P,R0,x_initial,bound_L, bound_U)
+            
+            % get the data length and RLS order 
+            N=length(y);[~,x0_num]=size(h);
+
+            % Initialize the parameters 
+            P=P*eye(x0_num);P_last=[];
+            X_rls=zeros(x0_num,N);X_rls(:,1)=x_initial;
+            y_hat_RLS=zeros(1,N);SE=0;MSE_RLS=zeros(3,N);
+            
+            % initila RLS values 
+             y_hat_RLS(1)=h(1,:)*x_initial;
+            
+             for i=1:N
+                if i>1
+
+                    % update K (normal)
+                    K=(P_last*h(i,:)')/(Beta+h(i,:)*P_last*h(i,:)');
+                    % update theta
+                    delt_theta=K*(y(i)-h(i,:)*X_rls(:,i-1));
+                    X_rls(:,i)=X_rls(:,i-1)+delt_theta;
+                    % update P (normal)
+                    P=(eye(x0_num)-K*h(i,:))*P_last/Beta;
+                    %% boundary projection
+
+                    P_1_2=chol(inv(P)); % find P^-1/2, P^-1=(P^-1/2)'*P^-1/2
+                    X_rls_apo=P_1_2*X_rls(:,i);
+                    
+                    boundary_x_points=[bound_L(1),bound_L(1),bound_U(1),bound_U(1)];
+                    boundary_y_points=[bound_L(2),bound_U(2),bound_L(2),bound_U(2)];
+
+                    % boundary points after linear transformation 
+                    boundary_x_points_LT=zeros(1,4);
+                    boundary_y_points_LT=zeros(1,4);
+
+                    % projection of lboundary points     
+                    for j=1:length(boundary_x_points)
+                        xy_LT=P_1_2*[boundary_x_points(j);boundary_y_points(j)]; % temperary operator 
+                        boundary_x_points_LT(j)=xy_LT(1);
+                        boundary_y_points_LT(j)=xy_LT(2);
+                    end
+                   
+                    % get the projection result 
+                    proj_result=findProjectionPointCombined(boundary_x_points_LT, boundary_y_points_LT, X_rls_apo');
+                    proj_theta=proj_result.projPoint;
+                    
+                    % reverse the projection point 
+                    X_rls(:,i)=P_1_2^-1*proj_theta';
+                    
+                    %for debugging 
+                    %{
+                    if i==198 
+                    % plot LT projection 
+                    figure;
+                    hold on;
+                    % 繪製四邊形區域 (填滿)
+                    fill(proj_result.sortedX, proj_result.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+                    % 繪製四邊形邊界
+                    plot([proj_result.sortedX proj_result.sortedX(1)], [proj_result.sortedY proj_result.sortedY(1)], 'b-', 'LineWidth',2);
+                    % 繪製原始點 P
+                    plot(X_rls_apo(1), X_rls_apo(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+                    % 繪製投影點
+                    plot(proj_result.projPoint(1), proj_result.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+                    % 畫出 P 與投影點之間的連線
+                    plot([X_rls_apo(1) proj_result.projPoint(1)], [X_rls_apo(2) proj_result.projPoint(2)], 'k--', 'LineWidth',1.5);
+
+                    % plot the inversed LT data  
+                    figure;
+                    hold on;
+                    % 排序四點
+                    sort_result=findProjectionPointCombined(boundary_x_points, boundary_y_points, X_rls_apo');
+                    % 繪製四邊形區域 (填滿)
+                    fill(sort_result.sortedX, sort_result.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+                    % 繪製四邊形邊界
+                    plot([sort_result.sortedX sort_result.sortedX(1)], [sort_result.sortedY sort_result.sortedY(1)], 'b-', 'LineWidth',2);
+                    % 繪製原始點 P
+                    plot(X_rls(1), X_rls(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+                    % 繪製投影點
+                    plot(sort_result.projPoint(1), sort_result.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+                    % 畫出 P 與投影點之間的連線
+                    plot([X_rls(1) sort_result.projPoint(1)], [X_rls(2) sort_result.projPoint(2)], 'k--', 'LineWidth',1.5);
+                    end 
+                     %}
+                    %% boundary projection end 
+                    
+                    % if ||P||>=R0,   don't update P
+                    if (norm(P)>=R0)
+                        P=P_last;
+                    end
+                    P_last=P;
+
+                    %calculate RLS output
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                    SE=SE+(y_hat_RLS(i)-y(i))^2;
+
+                    % calculate MSE of parameters and estimation error
+                    MSE_RLS(1,i)=SE/i;
+                    MSE_RLS(2,i)=SE/i;
+                    MSE_RLS(3,i)=SE/i;
+
+                else
+                    P_last=P;
+                end
+
+            end
+        end
+% 3D rls method 
+function [X_rls,y_hat_RLS,P,MSE_RLS]=RLS_covR_bond_3(y,h,Beta,P,R0,x_initial,bound_L, bound_U)
+            
+            % get the data length and RLS order 
+            N=length(y);[~,x0_num]=size(h);
+
+            % Initialize the parameters 
+            P=P*eye(x0_num);P_last=[];
+            X_rls=zeros(x0_num,N);X_rls(:,1)=x_initial;
+            y_hat_RLS=zeros(1,N);SE=0;MSE_RLS=zeros(3,N);
+            
+            % initila RLS values 
+             y_hat_RLS(1)=h(1,:)*x_initial;
+            
+             for i=1:N
+                if i>1
+
+                    % update K (normal)
+                    K=(P_last*h(i,:)')/(Beta+h(i,:)*P_last*h(i,:)');
+                    % update theta
+                    delt_theta=K*(y(i)-h(i,:)*X_rls(:,i-1));
+                    X_rls(:,i)=X_rls(:,i-1)+delt_theta;
+                    % update P (normal)
+                    P=(eye(x0_num)-K*h(i,:))*P_last/Beta;
+                    %% boundary projection
+
+                    P_1_2=chol(inv(P)); % find P^-1/2, P^-1=(P^-1/2)'*P^-1/2
+                    X_rls_apo=P_1_2*X_rls(:,i);
+                    
+                    boundary_x_points=[bound_L(1),bound_L(1),bound_U(1),bound_U(1)];
+                    boundary_y_points=[bound_L(2),bound_U(2),bound_L(2),bound_U(2)];
+
+                    % boundary points after linear transformation 
+                    boundary_x_points_LT=zeros(1,4);
+                    boundary_y_points_LT=zeros(1,4);
+
+                    % projection of lboundary points     
+                    for j=1:length(boundary_x_points)
+                        xy_LT=P_1_2*[boundary_x_points(j);boundary_y_points(j)]; % temperary operator 
+                        boundary_x_points_LT(j)=xy_LT(1);
+                        boundary_y_points_LT(j)=xy_LT(2);
+                    end
+                   
+                    % get the projection result 
+                    proj_result=findProjectionPointCombined(boundary_x_points_LT, boundary_y_points_LT, X_rls_apo');
+                    proj_theta=proj_result.projPoint;
+                    
+                    % reverse the projection point 
+                    X_rls(:,i)=P_1_2^-1*proj_theta';
+                    
+                    %for debugging 
+                    %{
+                    if i==198 
+                    % plot LT projection 
+                    figure;
+                    hold on;
+                    % 繪製四邊形區域 (填滿)
+                    fill(proj_result.sortedX, proj_result.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+                    % 繪製四邊形邊界
+                    plot([proj_result.sortedX proj_result.sortedX(1)], [proj_result.sortedY proj_result.sortedY(1)], 'b-', 'LineWidth',2);
+                    % 繪製原始點 P
+                    plot(X_rls_apo(1), X_rls_apo(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+                    % 繪製投影點
+                    plot(proj_result.projPoint(1), proj_result.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+                    % 畫出 P 與投影點之間的連線
+                    plot([X_rls_apo(1) proj_result.projPoint(1)], [X_rls_apo(2) proj_result.projPoint(2)], 'k--', 'LineWidth',1.5);
+
+                    % plot the inversed LT data  
+                    figure;
+                    hold on;
+                    % 排序四點
+                    sort_result=findProjectionPointCombined(boundary_x_points, boundary_y_points, X_rls_apo');
+                    % 繪製四邊形區域 (填滿)
+                    fill(sort_result.sortedX, sort_result.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+                    % 繪製四邊形邊界
+                    plot([sort_result.sortedX sort_result.sortedX(1)], [sort_result.sortedY sort_result.sortedY(1)], 'b-', 'LineWidth',2);
+                    % 繪製原始點 P
+                    plot(X_rls(1), X_rls(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+                    % 繪製投影點
+                    plot(sort_result.projPoint(1), sort_result.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+                    % 畫出 P 與投影點之間的連線
+                    plot([X_rls(1) sort_result.projPoint(1)], [X_rls(2) sort_result.projPoint(2)], 'k--', 'LineWidth',1.5);
+                    end 
+                     %}
+                    %% boundary projection end 
+                    
+                    % if ||P||>=R0,   don't update P
+                    if (norm(P)>=R0)
+                        P=P_last;
+                    end
+                    P_last=P;
+
+                    %calculate RLS output
+                    y_hat_RLS(i)=h(i,:)*X_rls(:,i-1);
+                    SE=SE+(y_hat_RLS(i)-y(i))^2;
+
+                    % calculate MSE of parameters and estimation error
+                    MSE_RLS(1,i)=SE/i;
+                    MSE_RLS(2,i)=SE/i;
+                    MSE_RLS(3,i)=SE/i;
+
+                else
+                    P_last=P;
+                end
+
+            end
+        end
+
+    end
+end
+
+function result = findProjectionPointCombined(x, y, P)
+% findProjectionPointCombined - 將未排序頂點排序後，找出給定點 P 到四邊形區域的最近投影點
+%
+% 說明:
+%   此函數首先將未排序的頂點依幾何中心排序，形成正確的四邊形，
+%   接著檢查 P 是否在區域內，若不在，則計算 P 到四邊形各邊的投影，並回傳距離最短者。
+%
+% 輸入:
+%   x, y - 未排序的四邊形各頂點座標向量
+%   P    - 給定的點 [x, y]
+%
+% 輸出:
+%   result - 結構包含下列欄位:
+%            sortedX, sortedY : 排序後的頂點座標
+%            projPoint        : P 到四邊形區域的最近投影點 [x, y]
+
+    % 依幾何中心排序頂點 (利用角度排序)
+    cx = mean(x);
+    cy = mean(y);
+    angles = atan2(y - cy, x - cx);
+    [~, idx] = sort(angles);
+    sortedX = x(idx);
+    sortedY = y(idx);
+
+    % 檢查 P 是否在多邊形內或邊界上
+    [in, on] = inpolygon(P(1), P(2), sortedX, sortedY);
+    if in || on
+        projPoint = P;
+    else
+        % 若 P 在多邊形外，計算到每一條邊的最近投影點
+        numVerts = length(sortedX);
+        minDist = inf;
+        projPoint = [NaN, NaN];
+
+        for i = 1:numVerts
+            A = [sortedX(i), sortedY(i)];
+            if i < numVerts
+                B = [sortedX(i+1), sortedY(i+1)];
+            else
+                B = [sortedX(1), sortedY(1)]; % 最後一點連接到第一點
+            end
+
+            AB = B - A;
+            AP = P - A;
+            t = dot(AP, AB) / dot(AB, AB);
+
+            if t < 0
+                currProj = A;
+            elseif t > 1
+                currProj = B;
+            else
+                currProj = A + t * AB;
+            end
+
+            currDist = norm(P - currProj);
+            if currDist < minDist
+                minDist = currDist;
+                projPoint = currProj;
+            end
+        end
+    end
+
+    % 將排序後的頂點與計算結果存入結構回傳
+    result.sortedX = sortedX;
+    result.sortedY = sortedY;
+    result.projPoint = projPoint;
+end
+
+function projPoint = projectPointOntoCube(vertices, P)
+% projectPointOntoCube - 計算給定點 P 到由八個頂點構成的四方體表面上的最近投影點
+%
+% 輸入:
+%   vertices - 8x3 陣列，表示四方體的頂點 (未排序，但必須構成凸多面體)
+%   P        - 1x3 給定點 [x, y, z]
+%
+% 輸出:
+%   projPoint - 最近投影點的座標 [x, y, z]
+%
+% 計算流程:
+%   1. 利用 convhulln 找出多面體各三角形面。
+%   2. 對每個三角形面，計算點到三角形的最短距離與對應投影點。
+%   3. 回傳所有面中距離最小者作為投影點。
+
+    % 取得 convex hull (每一列為一個三角形面，包含頂點的索引)
+    K = convhulln(vertices);
+    minDist = inf;
+    projPoint = [];
+    
+    % 對每個三角形面進行計算
+    for i = 1:size(K,1)
+        % 取出該三角形的三個頂點
+        A = vertices(K(i,1),:);
+        B = vertices(K(i,2),:);
+        C = vertices(K(i,3),:);
+        % 計算 P 到三角形的最近點與距離
+        [pt, dist] = pointToTriangle(P, A, B, C);
+        if dist < minDist
+            minDist = dist;
+            projPoint = pt;
+        end
+    end
+end
+
+function [closestPoint, dist] = pointToTriangle(P, A, B, C)
+% pointToTriangle - 計算點 P 到三角形 ABC 的最短距離與最近點
+%
+% 輸入:
+%   P - 1x3 給定點
+%   A, B, C - 1x3 三角形頂點
+%
+% 輸出:
+%   closestPoint - 1x3 最近點在三角形上
+%   dist         - 給定點與最近點之間的距離
+%
+% 演算法參考自常見點到三角形距離計算方法
+
+    % 向量計算
+    AB = B - A;
+    AC = C - A;
+    AP = P - A;
+    d1 = dot(AB, AP);
+    d2 = dot(AC, AP);
+    if d1 <= 0 && d2 <= 0
+        closestPoint = A;
+        dist = norm(P - A);
+        return;
+    end
+    
+    BP = P - B;
+    d3 = dot(AB, BP);
+    d4 = dot(AC, BP);
+    if d3 >= 0 && d4 <= d3
+        closestPoint = B;
+        dist = norm(P - B);
+        return;
+    end
+    
+    CP = P - C;
+    d5 = dot(AB, CP);
+    d6 = dot(AC, CP);
+    if d6 >= 0 && d5 <= d6
+        closestPoint = C;
+        dist = norm(P - C);
+        return;
+    end
+    
+    % 檢查邊 AB 的區域
+    vc = d1 * d4 - d3 * d2;
+    if vc <= 0 && d1 >= 0 && d3 <= 0
+        v = d1 / (d1 - d3);
+        closestPoint = A + v * AB;
+        dist = norm(P - closestPoint);
+        return;
+    end
+    
+    % 檢查邊 AC 的區域
+    vb = d2 * d5 - d1 * d6;
+    if vb <= 0 && d2 >= 0 && d6 <= 0
+        w = d2 / (d2 - d6);
+        closestPoint = A + w * AC;
+        dist = norm(P - closestPoint);
+        return;
+    end
+    
+    % 檢查邊 BC 的區域
+    va = d3 * d6 - d4 * d5;
+    if va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0
+        w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        closestPoint = B + w * (C - B);
+        dist = norm(P - closestPoint);
+        return;
+    end
+    
+    % 如果以上都不成立，則 P 在三角形內部對應的投影即為最近點
+    denom = 1 / (va + vb + vc);
+    v = vb * denom;
+    w = vc * denom;
+    closestPoint = A + AB * v + AC * w;
+    dist = norm(P - closestPoint);
+end

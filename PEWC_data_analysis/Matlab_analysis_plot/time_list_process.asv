@@ -1,0 +1,48 @@
+clc; clear; close all;
+warning('off','MATLAB:table:ModifiedVarnames');
+PEWC_data_0208_0217_2_2 = parquetread('../time_list_extraction/motor_time_list2_2.parquet');
+PEWC_data_0208_0217_5_2 = parquetread('../time_list_extraction/motor_time_list5_2.parquet');
+warning('on','MATLAB:table:ModifiedVarnames');
+%%
+clc; clear; close all;
+warning('off','MATLAB:table:ModifiedVarnames');
+PEWC_data_0208_0217_2_2 = parquetread('../time_list_extraction/motor_time_list2_2.parquet');
+PEWC_data_0208_0217_5_2 = parquetread('../time_list_extraction/motor_time_list5_2.parquet');
+warning('on','MATLAB:table:ModifiedVarnames');
+
+% 建立新圖形，設定白色背景及適當的尺寸
+f = figure('Color', 'w', 'Position', [100, 320, 700, 380]);
+hold on;
+
+% 繪製第一條曲線：柔和藍色實線
+plot(PEWC_data_0208_0217_2_2.ElapsedTime, PEWC_data_0208_0217_2_2.torque_time_list, ...
+    'LineWidth', 1.5, 'Color', [0.2, 0.4, 0.8], 'DisplayName', 'Data 2\_2');
+
+% 繪製第二條曲線：柔和紅色虛線
+plot(PEWC_data_0208_0217_5_2.ElapsedTime, PEWC_data_0208_0217_5_2.torque_time_list, ...
+    'LineWidth', 1.5, 'LineStyle', '-', 'Color', [0.8, 0.2, 0.2], 'DisplayName', 'Data 5\_2');
+
+% 設定軸標籤，使用 LaTeX 格式
+xlabel('Elapsed Time [min]', 'Interpreter', 'latex', 'FontSize', 14);
+ylabel('Torque [Nm]', 'Interpreter', 'latex', 'FontSize', 14);
+
+% 設定圖例，並使用 LaTeX 格式
+legend({'M2 torque output', 'M4 torque output'}, 'Location', 'best', 'Interpreter', 'latex');
+
+% 啟用格線與邊框，調整座標軸字型及線寬
+grid on;
+box on;
+set(gca, 'FontSize', 12, 'LineWidth', 1, 'TickLabelInterpreter', 'latex');
+
+% 將 Unix 時間轉換成 datetime，並指定格式（例如 'yyyy-MM-dd HH:mm:ss'）
+startDate1 = datetime(PEWC_data_0208_0217_2_2.TimeStamps(1), 'ConvertFrom', 'posixtime');
+endDate1   = datetime(PEWC_data_0208_0217_2_2.TimeStamps(end), 'ConvertFrom', 'posixtime');
+
+% 轉換為字串
+startStr1 = datestr(startDate1, 'yyyy-mm-dd HH:MM:ss');
+endStr1   = datestr(endDate1, 'yyyy-mm-dd HH:MM:ss');
+
+% 使用 xtick 與 xticklabel 在 x 軸的頭尾位置標示日期
+% 此處假設 x 軸的資料單位為 minutes，並以資料的第一與最後一筆數值作為 xtick 位置
+xticks([PEWC_data_0208_0217_2_2.ElapsedTime(1), PEWC_data_0208_0217_2_2.ElapsedTime(end)]);
+xticklabels({startStr1, endStr1});

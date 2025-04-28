@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "."
+		},
+		{
+			"path": "../PEWC_data_preprocess"
 		}
 	],
 	"settings": {}

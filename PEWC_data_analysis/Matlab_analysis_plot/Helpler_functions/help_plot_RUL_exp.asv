@@ -1,0 +1,12 @@
+function [RUL, failure_time]=help_plot_RUL_exp(estimate_x,valve,t0,phi1)
+% t0 is the true RLS start point offset 
+RUL=zeros(1,length(estimate_x));failure_time=zeros(1,length(estimate_x));
+for i=1:length(estimate_x)
+    % solve the t of y=a*e^bt
+    % analytical solution t=(ln(y)-ln(a))/b
+    rul_est=((log(abs(valve-phi1)))-estimate_x(1,i))/estimate_x(2,i);
+    % numerical solution
+    RUL(i)=rul_est-i;
+    % absolute failure time 
+    failure_time(i)=rul_est;
+end

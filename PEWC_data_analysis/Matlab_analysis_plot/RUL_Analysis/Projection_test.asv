@@ -1,0 +1,180 @@
+%% 主程式
+
+close all;clc; 
+
+% 定義未排序的四邊形頂點 (順序隨意)
+xv_unsorted = [5, 1, 2, 4];
+yv_unsorted = [5, 1, 4, 2];
+
+% 定義給定點 P
+P = [0, 3];
+
+% 呼叫整合函數找出投影點 (內部會先排序頂點)
+proj = findProjectionPointCombined(xv_unsorted, yv_unsorted, P);
+
+% 繪圖顯示結果
+figure;
+hold on;
+% 繪製四邊形區域 (填滿)
+fill(proj.sortedX, proj.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+% 繪製四邊形邊界
+plot([proj.sortedX proj.sortedX(1)], [proj.sortedY proj.sortedY(1)], 'b-', 'LineWidth',2);
+% 繪製原始點 P
+plot(P(1), P(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+% 繪製投影點
+plot(proj.projPoint(1), proj.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+% 畫出 P 與投影點之間的連線
+plot([P(1) proj.projPoint(1)], [P(2) proj.projPoint(2)], 'k--', 'LineWidth',1.5);
+
+legend('四邊形區域','區域邊界','原始點','投影點','距離連線','Location','Best');
+title('整合排序與投影 - 找出任一點到四邊形區域的最近投影點');
+xlabel('X');
+ylabel('Y');
+grid on;
+axis equal;
+hold off;
+
+
+%% 線性轉換後的投影點
+
+% linear transfrom matirx 
+A=[2 1 ; 3 0.5]; 
+P=A*P';P=P';
+
+for i=1:length(xv_unsorted)
+xy_LT=A*[xv_unsorted(i);yv_unsorted(i)];
+xv_unsorted(i)=xy_LT(1);
+yv_unsorted(i)=xy_LT(2);
+end 
+
+% 呼叫整合函數找出投影點 (內部會先排序頂點)
+proj = findProjectionPointCombined(xv_unsorted, yv_unsorted, P);
+
+% 繪圖顯示結果
+figure;
+hold on;
+% 繪製四邊形區域 (填滿)
+fill(proj.sortedX, proj.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+% 繪製四邊形邊界
+plot([proj.sortedX proj.sortedX(1)], [proj.sortedY proj.sortedY(1)], 'b-', 'LineWidth',2);
+% 繪製原始點 P
+plot(P(1), P(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+% 繪製投影點
+plot(proj.projPoint(1), proj.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+% 畫出 P 與投影點之間的連線
+plot([P(1) proj.projPoint(1)], [P(2) proj.projPoint(2)], 'k--', 'LineWidth',1.5);
+
+legend('四邊形區域','區域邊界','原始點','投影點','距離連線','Location','Best');
+title('整合排序與投影 - 找出任一點到四邊形區域的最近投影點');
+xlabel('X');
+ylabel('Y');
+grid on;
+axis equal;
+hold off;
+
+%% 投影回原本座標軸
+% inverse linear transfrom  
+
+P=A^-1*P';P=P';
+
+P_projected_LT_back=
+
+for i=1:length(xv_unsorted)
+xy_LT=A^-1*[xv_unsorted(i);yv_unsorted(i)];
+xv_unsorted(i)=xy_LT(1);
+yv_unsorted(i)=xy_LT(2);
+end 
+
+%sort the project point
+proj = findProjectionPointCombined(xv_unsorted, yv_unsorted, P);
+
+% 繪圖顯示結果
+figure;
+hold on;
+% 繪製四邊形區域 (填滿)
+fill(proj.sortedX, proj.sortedY, [0.8 0.8 1], 'FaceAlpha',0.5, 'EdgeColor', 'b');
+% 繪製四邊形邊界
+plot([proj.sortedX proj.sortedX(1)], [proj.sortedY proj.sortedY(1)], 'b-', 'LineWidth',2);
+% 繪製原始點 P
+plot(P(1), P(2), 'ro', 'MarkerSize',10, 'LineWidth',2);
+% 繪製投影點
+plot(proj.projPoint(1), proj.projPoint(2), 'gs', 'MarkerSize',10, 'LineWidth',2);
+% 畫出 P 與投影點之間的連線
+plot([P(1) proj.projPoint(1)], [P(2) proj.projPoint(2)], 'k--', 'LineWidth',1.5);
+
+legend('四邊形區域','區域邊界','原始點','投影點','距離連線','Location','Best');
+title('整合排序與投影 - 找出任一點到四邊形區域的最近投影點');
+xlabel('X');
+ylabel('Y');
+grid on;
+axis equal;
+hold off;
+
+%% 合併排序頂點與投影計算的函數
+function result = findProjectionPointCombined(x, y, P)
+% findProjectionPointCombined - 將未排序頂點排序後，找出給定點 P 到四邊形區域的最近投影點
+%
+% 說明:
+%   此函數首先將未排序的頂點依幾何中心排序，形成正確的四邊形，
+%   接著檢查 P 是否在區域內，若不在，則計算 P 到四邊形各邊的投影，並回傳距離最短者。
+%
+% 輸入:
+%   x, y - 未排序的四邊形各頂點座標向量
+%   P    - 給定的點 [x, y]
+%
+% 輸出:
+%   result - 結構包含下列欄位:
+%            sortedX, sortedY : 排序後的頂點座標
+%            projPoint        : P 到四邊形區域的最近投影點 [x, y]
+
+    % 依幾何中心排序頂點 (利用角度排序)
+    cx = mean(x);
+    cy = mean(y);
+    angles = atan2(y - cy, x - cx);
+    [~, idx] = sort(angles);
+    sortedX = x(idx);
+    sortedY = y(idx);
+
+    % 檢查 P 是否在多邊形內或邊界上
+    [in, on] = inpolygon(P(1), P(2), sortedX, sortedY);
+    if in || on
+        projPoint = P;
+    else
+        % 若 P 在多邊形外，計算到每一條邊的最近投影點
+        numVerts = length(sortedX);
+        minDist = inf;
+        projPoint = [NaN, NaN];
+
+        for i = 1:numVerts
+            A = [sortedX(i), sortedY(i)];
+            if i < numVerts
+                B = [sortedX(i+1), sortedY(i+1)];
+            else
+                B = [sortedX(1), sortedY(1)]; % 最後一點連接到第一點
+            end
+
+            AB = B - A;
+            AP = P - A;
+            t = dot(AP, AB) / dot(AB, AB);
+
+            if t < 0
+                currProj = A;
+            elseif t > 1
+                currProj = B;
+            else
+                currProj = A + t * AB;
+            end
+
+            currDist = norm(P - currProj);
+            if currDist < minDist
+                minDist = currDist;
+                projPoint = currProj;
+            end
+        end
+    end
+
+    % 將排序後的頂點與計算結果存入結構回傳
+    result.sortedX = sortedX;
+    result.sortedY = sortedY;
+    result.projPoint = projPoint;
+end

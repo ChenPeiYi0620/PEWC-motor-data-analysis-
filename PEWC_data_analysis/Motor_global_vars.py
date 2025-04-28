@@ -46,8 +46,8 @@ V_measure_mode=get_parameter_from_df(parameters,'V_measure_mode','Vadc_mode')
 fast_update_period=get_parameter_from_df(parameters,'FAST_period',60) # 1 min
 rul_update_period=get_parameter_from_df(parameters,'RUL_period',300) # 5 min
 transmit_test_flag=get_parameter_from_df(parameters,'Transmit_test_flag',0)
-Data_folder_path=parameters['Record File Path']
-Data_folder_path=Data_folder_path[0]
+# Data_folder_path=parameters['Record File Path']
+# Data_folder_path=Data_folder_path[0]
 
 sampling_rate=10000
 # for motor ID

@@ -5,10 +5,27 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3bf05bc8-d006-40a9-a93c-32207ab04460" name="Changes" comment="first commit">
-      <change afterPath="$PROJECT_DIR$/../.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../data_read_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../historical_data_check.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../rul_data_read.py" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/CCAE_function_1024_point_all_data.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/main_all_data.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/model.keras" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/CCAE_function_1024_point.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/all_model_summaries.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD0P940.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD1P443.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model.keras" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model.keras_architecture.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_architecture.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_decoder.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_encoder.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_full.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/my_model_summary.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/output.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/training_history.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/all_data_BD.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/讀取全部檔案看趨勢.zip" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/選取一定範圍做預測.zip" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,18 +65,18 @@
     <option name="sortByType" value="true" />
     <option name="sortKey" value="BY_TYPE" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.Data_handle_in_IPC.executor": "Debug",
-    "Python.data_read_test.executor": "Run",
-    "Python.historical_data_check.executor": "Debug",
-    "Python.rul_data_read.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "D:/Pycharm_conda_projects/PEWC data analysis/PEWC_data_analysis",
-    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.Data_handle_in_IPC.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.data_read_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.historical_data_check.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.rul_data_read.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Pycharm_conda_projects/PEWC data analysis/PEWC_data_analysis&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.DirectoryMappings&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Pycharm_conda_projects\PEWC data analysis" />
