@@ -54,7 +54,7 @@ print("end date:", end_date)
 raw_time = np.array(motor_time_list["Elapsed time"])
 torque_timelist = np.array(motor_time_list["torque_time_list"])
 
-filtered_data, kept_idx, filtered_idx = t_process.remove_outliers_moving_window(torque_timelist, window_size=10, n_std=2.5, plot=False)
+filtered_data, kept_idx, filtered_idx = t_process.detect_outliers_window_tail(torque_timelist, window_size=10, n_std=2.5, plot=False)
 filtered_time = raw_time[kept_idx]
 initial_health = np.mean(filtered_data[:10])
 ema_data = get_ema(filtered_data, alpha=0.1, initial_value=initial_health)

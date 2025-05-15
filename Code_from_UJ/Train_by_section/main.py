@@ -26,14 +26,12 @@ if '.' not in model_name:
     model_name += '.keras'
 loaded_model = load_model(model_name)
 
-# 使用訓練好的模型做預測
+#%% 使用訓練好的模型做預測
 if Is_predict == 1:
-    #%%
-    plot_hlpler.plot_CCAE_reconstrcut_signal(motor_data_list[0], loaded_model, label=1) # 畫出單一電流的重建圖
-    plot_hlpler.plot_CCAE_reconstrcut_signal(motor_abnormal_data_list[0], loaded_model, label=1) # 畫出單一電流的重建圖
-    plot_hlpler.plot_CCAE_reconstrcut_signal(motor_abnormal_data_list[1], loaded_model, label=1) # 畫出單一電流的重建圖
+    # plot_hlpler.plot_CCAE_reconstrcut_signal(motor_data_list[0], loaded_model, label=1) # 畫出單一電流的重建圖
+    # plot_hlpler.plot_CCAE_reconstrcut_signal(motor_abnormal_data_list[0], loaded_model, label=1) # 畫出單一電流的重建圖
+    # plot_hlpler.plot_CCAE_reconstrcut_signal(motor_abnormal_data_list[1], loaded_model, label=1) # 畫出單一電流的重建圖
 
-    #%%
     CCAE_function_1024_point.CCAE_model(Normal_motor_data = motor_data_list , # 健康的資料，用來畫圖
                             Abnormal_motor_data = motor_abnormal_data_list , # 損壞的資料
                             model_name = model_name , # 模型

@@ -45,6 +45,48 @@ class time_data_preprocess:
         
         return filtered_data, kept_indices, removed_indices
     
+    def detect_outliers_window_tail(data, window_size=20, n_std=3, plot=False):
+        """
+        Detect outliers using a moving window where each window's last point is evaluated
+        based on the preceding points within the window.
+        
+        Args:
+            data (np.array): Input data array
+            window_size (int): Size of the moving window
+            n_std (float): Number of standard deviations for outlier threshold
+            plot (bool): Whether to plot the results
+        
+        Returns:
+            tuple: (filtered_data, kept_indices, removed_indices)
+        """
+        data = np.array(data)
+        filtered_data = []
+        kept_indices = []
+        removed_indices = []
+
+        for i in range(window_size, len(data)):
+            window = data[i - window_size:i]  # 前 window_size 筆
+            tail = data[i]  # 待判斷點
+
+            local_mean = np.mean(window)
+            local_std = np.std(window)
+
+            if abs(tail - local_mean) <= n_std * local_std:
+                filtered_data.append(tail)
+                kept_indices.append(i)
+            else:
+                removed_indices.append(i)
+
+        if plot:
+            plt.figure(figsize=(12, 6))
+            plt.plot(data, label='Original Data')
+            plt.plot(removed_indices, data[removed_indices], 'o', label='Outliers', color='red')
+            plt.legend()
+            plt.title("Outlier Detection using Moving Window Tail Method")
+            plt.show(block=False)
+
+        return np.array(filtered_data), kept_indices, removed_indices
+    
     def ewma(data, alpha=0.3):
         """
         Exponentially Weighted Moving Average (EWMA) filter.

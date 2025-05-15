@@ -5,27 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3bf05bc8-d006-40a9-a93c-32207ab04460" name="Changes" comment="first commit">
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/CCAE_function_1024_point_all_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/main_all_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/CCAE_all_data/model.keras" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/CCAE_function_1024_point.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/all_model_summaries.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD0P940.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD1P443.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model.keras" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model.keras_architecture.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_architecture.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_decoder.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_encoder.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_full.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/my_model_summary.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/output.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/training_history.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/all_data_BD.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/讀取全部檔案看趨勢.zip" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../Code_from_UJ/選取一定範圍做預測.zip" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/CCAE_function_1024_point.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/CCAE_function_1024_point.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD1P443.png" beforeDir="false" afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/figure_1_BD1P443.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_architecture.png" beforeDir="false" afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/model_pei.keras_architecture.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/output.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Code_from_UJ/Train_by_section/output.xlsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

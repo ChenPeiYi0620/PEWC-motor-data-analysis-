@@ -258,8 +258,12 @@ def extract_time_list_data_essemble(essemble_data, ref_time=0):
             torque, _, _, v_alpha, v_beta, power_sts = Data_handle_in_IPC.estimate_torque(data_read, debug=False)
     
         # Calculate average torque based on array length
+        
         if len(torque) > 2500:
-            torque_avg = np.mean(np.abs(torque[2250:2500]))
+            if len(torque) == 4000 and is_after_march_10:
+                torque_avg = np.mean(np.abs(torque[-2000:]))
+            else :
+                torque_avg = np.mean(np.abs(torque[2250:2500]))
         else:
             torque_avg = np.mean(np.abs(torque[-500:]))
 
@@ -301,7 +305,7 @@ if __name__ == "__main__":
 #%% sample data check
 
     #Motor device number                      
-    device_number = 2
+    device_number = 5
     # output file name
     output_dir = f"time_list_extraction\RUL_{device_number}"
     motor_time_list_total = pd.DataFrame()
@@ -311,6 +315,7 @@ if __name__ == "__main__":
     data_read = rul_rd.read_rul_data('../PEWC dataset/PEWC_raw_data/0310to0318PEWC/RUL_2/RUL_Data_2_2754.parquet')
     # data_read = rul_rd.read_rul_data('../PEWC dataset/PEWC_raw_data/0318to0325PEWC/RUL_2/RUL_Data_2_4838.parquet')
     # data_read = rul_rd.read_rul_data('../PEWC dataset/PEWC_raw_data/0217to0226PEWC/RUL_5/RUL_Data_5_910.parquet')
+    # data_read = rul_rd.read_rul_data('../PEWC dataset/PEWC_raw_data/0408to0427PEWC/RUL_2/RUL_Data_2_6441.parquet')
     
     if datetime.fromtimestamp(int(data_read["Unix Time"])).date() >= datetime(2025, 3, 1).date():
         # turn the voltage beta into phase c voltage 
@@ -388,10 +393,12 @@ if __name__ == "__main__":
         '0217to0226PEWC', 
         '0226to0310PEWC',
         '0310to0318PEWC',
-        '0318to0325PEWC'
+        '0318to0325PEWC',
+        '0325to0408PEWC',
+        '0408to0427PEWC'
     ]
-    time_list_overwrite = False
-    # time_list_overwrite = True
+    # time_list_overwrite = False
+    time_list_overwrite = True
 
     # Collection dates in chronological order
    

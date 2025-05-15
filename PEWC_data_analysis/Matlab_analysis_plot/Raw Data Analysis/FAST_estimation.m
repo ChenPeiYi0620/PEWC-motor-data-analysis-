@@ -5,8 +5,8 @@ clc; close all; clear;
 %% import and plot  sample data and initialize parameters 
 % smaple_file='../test_data/RUL_Data_2_2752.parquet';
 % smaple_file='../test_data/RUL_Data_5_2754.parquet';
-smaple_file='../test_data/RUL_Data_2_4831.parquet';
-% smaple_file='../test_data/RUL_Data_2_4837.parquet';
+% smaple_file='../test_data/RUL_Data_2_4831.parquet';
+smaple_file='../test_data/RUL_Data_2_4837.parquet';
 % smaple_file='../test_data/RUL_Data_2_4838.parquet';
 
 

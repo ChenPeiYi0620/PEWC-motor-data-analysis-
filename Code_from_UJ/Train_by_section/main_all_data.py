@@ -51,9 +51,6 @@ RUL_5 = []
 # 使用訓練好的模型做預測
 if Is_predict == 1:
 
-   
-    
-    
     # 確認 "CCAE_MSE_results.csv" 是否存在
     if not os.path.exists("CCAE_MSE_results.csv"):          
         #  run the model to get the MSE
@@ -90,6 +87,16 @@ if Is_predict == 1:
     # Plot RUL2_CCAE_Mse
     # Scatter plot for RUL2_segmented_mse
     ref_mse = RUL2_segmented_mse[0]
+    # Plot histogram of reference MSE distribution
+    plt.figure(figsize=(10, 6))
+    plt.hist(ref_mse, bins=50, alpha=0.7, color='blue')
+    plt.title('Reference MSE Distribution Histogram')
+    plt.xlabel('MSE Value')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.savefig('Reference_MSE_Histogram.png')
+    plt.show()
+    #%%
     down_sample_size=min(200, len(ref_mse))
     maker_size=10
     plt.figure(figsize=(10, 6))
