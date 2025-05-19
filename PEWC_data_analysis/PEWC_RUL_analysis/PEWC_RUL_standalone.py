@@ -13,6 +13,7 @@ import pandas as pd
 import os
 import sys
 from IPython.display import HTML, display, IFrame
+import pickle
 
 # 將專案根目錄加入 sys.path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -22,7 +23,7 @@ if project_root not in sys.path:
  # 匯入自定義函式
 from PEWC_analysis_helpler.rul_helplers import (
     time_data_preprocess as t_process,
-    plot_helplers as plt_helper,
+    plot_helplers as plt_helper,  
     get_ema,
     get_smape_and_csmape,
     rolling_mk,
@@ -159,116 +160,6 @@ def convert_unix_to_minutes(unix_str_list):
 
     return delta_minutes   
 
-def get_rul_realtime(dynamic_data_path, rul_package, device_number, record_info):
-    
-    def simple_plot(x, y1, y2, title='Plot', xlabel='X', ylabel='Y'):
-        x = np.array(x)
-        fig = plt.figure(figsize=(10, 6))
-        plt.plot(x, y1, label='Data1')
-        plt.plot(x, y2, label='Data2')
-        plt.title(title)
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.grid(True)
-        plt.legend()
-        plt.show(block=False)
-        return fig
-    
-    rul_package['observed_count']=rul_package['observed_count']+1
-    
-    # 若資料量不足則更新資料並跳出
-    if rul_package['observed_count'] <= rul_package['MK_window_size']:
-        rul_package['MK_window_raw'][rul_package['observed_count']-1]=rul_package['current_observe']
-        rul_package['MK_window_filt'][rul_package['observed_count']-1]=rul_package['current_observe']
-        rul_package['EMA_HI']=(1-rul_package['EMA_coeff'])*rul_package['EMA_HI_last']+rul_package['EMA_coeff']*rul_package['current_observe']
-        rul_package['EMA_HI_last']= rul_package['EMA_HI']
-        rul_package['MK_window_EMA'][rul_package['observed_count']-1]=rul_package['EMA_HI']
-        rul_package['MK_window_stamp'][rul_package['observed_count']-1]=rul_package['current_stamp']
-        return[]
-    else:
-        
-        # 更新慮波值
-        n_std=rul_package['filt_n_std'] # 三倍標準差
-        last_obsereves=rul_package['MK_window_raw'][-rul_package['filt_window']:]
-        local_mean = np.mean(last_obsereves)
-        local_std = np.std(last_obsereves)
-        
-        # 若為離群值則用平均值代替
-        if abs(rul_package['current_observe'] - local_mean) >= n_std * local_std:
-            # return[]
-            rul_package['MK_window_filt'] = np.delete(rul_package['MK_window_filt'], 0)
-            rul_package['MK_window_raw'] = np.delete(rul_package['MK_window_raw'], 0)
-            rul_package['MK_window_filt'] = np.append(rul_package['MK_window_filt'], rul_package['MK_window_raw'][-1]) 
-            rul_package['MK_window_raw'] = np.append(rul_package['MK_window_raw'], rul_package['current_observe'])
-            # print(f"count= {rul_package['observed_count']}, local_mean={local_mean:.4f}, current_observe={rul_package['current_observe']:.4f}")        
-            # fig=simple_plot(range(len(rul_package['MK_window_raw'])), rul_package['MK_window_raw'], rul_package['MK_window_filt'], title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-            # plt.close(fig)
-        else:
-            rul_package['MK_window_filt'] = np.delete(rul_package['MK_window_filt'], 0)
-            rul_package['MK_window_raw'] = np.delete(rul_package['MK_window_raw'], 0)
-            rul_package['MK_window_filt'] = np.append(rul_package['MK_window_filt'], rul_package['current_observe'])
-            rul_package['MK_window_raw'] = np.append(rul_package['MK_window_raw'], rul_package['current_observe'])
-            # fig=simple_plot(range(len(rul_package['MK_window_raw'])), rul_package['MK_window_raw'], rul_package['MK_window_filt'], title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-            # plt.close(fig)
-        # 更新原始資料
-        
-        # 更新EMA資料
-        rul_package['EMA_HI']=(1-rul_package['EMA_coeff'])*rul_package['EMA_HI_last']+rul_package['EMA_coeff']*rul_package['current_observe']
-        rul_package['EMA_HI_last']=rul_package['EMA_HI']
-        rul_package['MK_window_EMA'] = np.delete(rul_package['MK_window_EMA'], 0)
-        rul_package['MK_window_EMA'] = np.append(rul_package['MK_window_EMA'], rul_package['EMA_HI'])
-        rul_package['MK_window_stamp'] = np.delete(rul_package['MK_window_stamp'], 0)
-        rul_package['MK_window_stamp'] = np.append(rul_package['MK_window_stamp'], rul_package['current_stamp'])
-        
-        # 除錯用
-        # fig=simple_plot(range(len(rul_package['MK_window_raw'])), rul_package['MK_window_raw'], rul_package['MK_window_filt'], title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-        # plt.close(fig)
-        # fig=simple_plot(range(len(rul_package['MK_window_raw'])), rul_package['MK_window_raw'], rul_package['MK_window_EMA'], title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-        # plt.close(fig)
-        
-        
-    # RUL啟動判定
-    if rul_package['RUL_enable']== 0 and rul_package['observed_count']>=rul_package['MK_window_size']:
-        
-        # 進行MK檢定
-        _, Z_window = rolling_mk(
-            data=rul_package['MK_window_EMA'], 
-            roll_length=rul_package['MK_window_size'],
-            epsilon=rul_package['MK_epsilon'])
-        z_i = Z_window[-1]
-        
-        if np.abs(z_i) < 3 or rul_package['EMA_HI'] > rul_package['RUL_start_thres']:
-            return []
-        
-        #若啟動則進行RUL初始化
-        else:
-            rul_package['RUL_start_idx'] = rul_package['observed_count'] - rul_package['MK_window_size']
-            fig=simple_plot(range(len(rul_package['MK_window_filt'])), rul_package['MK_window_filt'], rul_package['MK_window_EMA'], title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-            plt.close(fig)
-            # 進行RUL預測
-            rul_package['RUL_enable'] = 1
-            # 用NLR初始化預測參數
-            y_fit = rul_package['MK_window_EMA']   
-            x_start = convert_unix_to_minutes([rul_package['MK_window_stamp'][0]])     
-            x_fit_relative = convert_unix_to_minutes(rul_package['MK_window_stamp'])-x_start
-            
-            fig=simple_plot(x_fit_relative, rul_package['MK_window_filt'], y_fit, title='RUL EMA', xlabel='Time', ylabel='EMA HI')
-            plt.close(fig)
-
-            initial_guess =rul_package['NLR_initial']
-            bounds = rul_package['Proj_bound']
-
-            params, _ = curve_fit(model_func, x_fit_relative, y_fit, p0=initial_guess, bounds=bounds, maxfev=2000)
-            phi0, alpha, beta, gamma = params
-            print("Initial model parameters:")
-            print(f"phi0 = {phi0:.4f}, alpha = {alpha:.4f}, beta = {beta:.4f}, gamma = {gamma:.4f}")
-            print(f"Fail_idx_MA = {Fail_idx_MA}, RUL_start_idx = {RUL_start_idx}")
-            
-            
-    # 若RUL已啟動則進行RUL預測
-    
-    return []
-    
 class DynamicRULDetector:
     def __init__(self,
                  mk_window_size: int = 50,
@@ -321,6 +212,10 @@ class DynamicRULDetector:
         self.RUL_thres =0 # 失效門檻
         self.RLS_initial_params=None # RLS初始化參數
         self.rls_params_upd = None # RLS預測參數更新
+        
+        #預測結果 
+        self.rul_pred=None
+        self.rul_curve=[]
             
     
     @staticmethod
@@ -335,10 +230,10 @@ class DynamicRULDetector:
         plt.ylabel(ylabel)
         plt.grid(True)
         plt.legend()
-        plt.show(block=False)
+        plt.show(block=False)  
         return fig
     
-    def update(self, value: float, timestamp) -> int:
+    def update(self, value: float, timestamp, is_test=False) -> int:
         """
         推入新的觀測值並檢測是否達成 RUL 啟動條件。
 
@@ -435,8 +330,12 @@ class DynamicRULDetector:
                 return None
             
         # RUL 啟動後，動態更新PRLS預測 
+        # 如果 指標達到失效點則跳出
+        if self.ema_last < self.RUL_thres:
+            print(f"RUL 觸發於全域觀測第 {self.count} 筆 (資料點索引 i={self.count - 1})")
+            return 0
         
-
+        
         P0 = self.rls_p0.copy() # 取得當前P矩陣
         
         x_temp = np.array([self.rls_params_upd['phi0'], 
@@ -483,40 +382,41 @@ class DynamicRULDetector:
         try:
             sol = fsolve(f_eq, x0=10000)[0]
             if sol > 0:
-                
-                print(f'Elapsed time : {int(t_relative)} min ,phi0={x_temp[0]:.4f}, alpha={x_temp[0]:.4f},beta={beta_i:.4f}', end="")
-                print(f' e={e:.4f}, k={K[0,0]:.6f}, P0={P0[0,0]:.6f}')
-                # 取出RUL曲線點
-                x_curve = np.linspace(0, sol, 100)
+                x_curve = np.linspace(t_relative, sol, 100)
                 y_curve = phi0_i + alpha_i * x_curve + beta_i / (x_curve + self.RLS_initial_params['gamma'])
-                t_window=convert_unix_to_minutes(self.ts_hist)-t
-                # Clear previous plot if it exists
-                plt.clf()
-                
-                # Create new plot
-                # fig = self.simple_plot(t_window, x_curve, self.ema_hist, y_curve, title='RUL EMA', xlabel='Time [min]', ylabel='EMA HI')
-                
-                # Add additional plot elements for debugging
-                x1 = np.array(t_window)
-                x2 = np.array(x_curve)
-                plt.plot(x1, self.ema_hist, label='Data1')
-                plt.plot(x2, y_curve, label='Data2')
-                plt.grid(True)
-                plt.legend()
-                plt.xlim(0, 10000)
-                plt.axhline(y=self.RUL_thres, color='r', linestyle='--', label='RUL Threshold')
-                plt.text(0.02, 0.98, f'Time: {t_relative:.1f} min', transform=plt.gca().transAxes)
-                plt.text(0.02, 0.94, f'RUL: {sol-t_relative:.1f} min', transform=plt.gca().transAxes)
-                plt.legend()
-                plt.pause(0.05)
-                
-                # Draw and pause briefly to show animation
-                plt.draw()
-             
-    
+
+                if is_test:
+                    #   測試模式印出並畫出結果
+                    print(f'Elapsed time : {int(t_relative)} min ,phi0={x_temp[0]:.4f}, alpha={x_temp[0]:.4f},beta={beta_i:.4f}', end="")
+                    print(f' e={e:.4f}, k={K[0,0]:.6f}, P0={P0[0,0]:.6f}')
+                    # 取出RUL曲線點
+                    t_window=convert_unix_to_minutes(self.ts_hist)-t
+                    # Clear previous plot if it exists
+                    plt.clf()
+                    # Create new plot
+                    # fig = self.simple_plot(t_window, x_curve, self.ema_hist, y_curve, title='RUL EMA', xlabel='Time [min]', ylabel='EMA HI')
+                    
+                    # Add additional plot elements for debugging
+                    x1 = np.array(t_window)
+                    x2 = np.array(x_curve)
+                    plt.plot(x1, self.ema_hist, label='Data1')
+                    plt.plot(x2, y_curve, label='Data2')
+                    plt.grid(True)
+                    plt.legend()
+                    plt.xlim(0, 10000)
+                    plt.axhline(y=self.RUL_thres, color='r', linestyle='--', label='RUL Threshold')
+                    plt.text(0.02, 0.98, f'Time: {t_relative:.1f} min', transform=plt.gca().transAxes)
+                    plt.text(0.02, 0.94, f'RUL: {sol-t_relative:.1f} min', transform=plt.gca().transAxes)
+                    plt.legend()
+                    plt.pause(0.05)
+                    # Draw and pause briefly to show animation
+                    plt.draw()
             
                 # 回傳剩餘壽命時間(分鐘)
                 # print(f"RUL 預測時間: {sol- t_relative:.2f} min")
+                self.rul_pred = sol - t_relative
+                # Create numpy array with both x and y curve data
+                self.rul_curve = np.vstack((x_curve, y_curve))
                 return sol - t_relative
         except:
             return None
@@ -525,52 +425,11 @@ class DynamicRULDetector:
 
 if __name__ == "__main__":
    
-
-    rul_dynamic_package={
-        # 資料前處理相關
-        'Initial_health': 0, # 初始健康值
-        'current_observe': 0, # 當前觀測資料
-        'current_stamp': '', # 當前時間戳記
-        'EMA_HI_last': 0, # 上一步 EMA健康指標
-        'EMA_coeff': 0.1, # EMA 係數
-        'EMA_HI': 0, # EMA後之健康指標
-        'observed_count': 0, # 已觀測資料數量
-        'filt_window': 10, # 濾波窗大小
-        'filt_n_std': 2.5, # 濾波標準差倍數
-        
-        # MK 檢測相關
-        'MK_window_raw': np.zeros(MK_window), # 初始化長度為 MK_window 的 nparray
-        'MK_window_filt': np.zeros(MK_window), # 過濾後的窗內資料
-        'MK_window_EMA': np.zeros(MK_window), # EMA 處理後的窗內資料
-        'MK_window_size': MK_window, # MK窗大小
-        'MK_epsilon': 0, # MK 檢測的 epsilon 值
-        'RUL_enable':0,      # RUL 啟旗標
-        
-        # 預測相關
-        'RUL_thres':[],
-        'RUL_start_thres':0,
-        'RUL_start_time': [], # RUL 啟動時間 ('Unix')
-        'RUL_start_idx': 0, # RUL 啟動位置(debug)
-        'RUL_parameter_last':[],   # RUL 上一步模型參數
-        'MK_window_stamp':[None]*MK_window,       # RUL 時間戳記
-        'NLR_initial':[], # NLR 初始化參數
-        
-        # RLS相關
-        'Proj_bound':[], # 預測邊界
-        
-    }
+    #%% 動態RUL檢測器初始化
     
-    detector = DynamicRULDetector(
-    mk_window_size=50,
-    ema_coeff=0.1,
-    filt_window=10,
-    filt_n_std=2.5,
-    mk_epsilon=0.0,
-    start_thres_ratio=0.95
-    )
-    
-    # 設定當前工作目錄為腳本所在的目錄
+    # Change working directory to script location
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    
 
     # 將專案根目錄加入 sys.path
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -605,175 +464,63 @@ if __name__ == "__main__":
     health_indicator = ema_data
      
    #%% 開始動態預測RUL
-   # GPT 版本
+   
+    # 建立新的 detector
+    print("Creating new detector...")
+    detector = DynamicRULDetector(
+            mk_window_size=50,
+            ema_coeff=0.1, 
+            filt_window=10,
+            filt_n_std=2.5,
+            mk_epsilon=0.0,
+            start_thres_ratio=0.95
+        )   
    
 
-    for i, (hi, ts) in enumerate(zip(torque_timelist, motor_time_list["Time stamps"])):
-        idx = detector.update(hi, ts)
-            
-   
-    window_observed_data=[]
-   # 初始化RUL預測處理器
-    rul_dynamic_package['Initial_health']=initial_health
-    rul_dynamic_package['MK_window_data']=window_observed_data
-    rul_dynamic_package['RUL_thres']=initial_health*0.82
-    rul_dynamic_package['RUL_start_thres']=initial_health * 0.95
-    rul_dynamic_package['EMA_HI_last']=initial_health
-    rul_dynamic_package['NLR_initial'] = [initial_health, -1, 1, 1]
-    rul_dynamic_package['Proj_bound']  = ([0, -np.inf, -np.inf, 0], [np.inf, 0, np.inf, np.inf])
-    # rul_dynamic_package[]=
-    # rul_dynamic_package[]=
-    # rul_dynamic_package[]=
+    # 測試用 從中間某點開始進行預測
+    test_idx=355
     
-    for i in range(len(torque_timelist)):
-        rul_dynamic_package['current_observe']=torque_timelist[i]
-        rul_dynamic_package['current_stamp']=motor_time_list["Time stamps"][i]
-        get_rul_realtime('', rul_dynamic_package, device_number, record_info)
-   
+    for i, (hi, ts) in enumerate(zip(torque_timelist[:test_idx], motor_time_list["Time stamps"][:test_idx])):
+        rul = detector.update(hi, ts, is_test=True)
+        # 儲存 class 實例
+        with open('dynamic_rul_detector.pkl', 'wb') as f:
+            pickle.dump(detector, f)
     
-
-    #%% MK 檢定與 RUL 啟動判定
-
-    mk_S, mk_Z = rolling_mk(ema_data, roll_length=MK_window, epsilon=0)
-
-    RUL_thres = initial_health * 0.82
-    if np.max(ema_data) < RUL_thres:
-        RUL_thres = np.max(ema_data)
-    fail_candidates = np.where(ema_data <= RUL_thres)[0]
-    if len(fail_candidates) == 0:
-        raise ValueError("資料未達到失效門檢，請確認數據與門檢設定。")
-    Fail_idx_MA = fail_candidates[0]
-
-    rul_start_thres = initial_health * 0.95
-    trigger_candidates = np.where((np.abs(mk_Z) > 3) & (ema_data < rul_start_thres))[0]
-    if len(trigger_candidates) == 0:
-        raise ValueError("找不到符合條件的 RUL 啟動點")
-    RUL_start_idx = trigger_candidates[0]
-
-    #%% 非線性參數擬合
-
-    #  lin_mod = 'phi0+alpha*x+beta/(x+gamma)';
-
-    x_fit = filtered_time[RUL_start_idx - MK_window + 1:RUL_start_idx + 1]
-    y_fit = ema_data[RUL_start_idx - MK_window + 1:RUL_start_idx + 1]
-    x_fit_relative = x_fit - x_fit[0]
-
-    initial_guess = [initial_health, -1, 1, 1]
-    bounds = ([0, -np.inf, -np.inf, 0], [np.inf, 0, 0, np.inf])
-
-    params, _ = curve_fit(model_func, x_fit_relative, y_fit, p0=initial_guess, bounds=bounds)
+    # 讀取斷點資料
+    print("Loading existing detector...")
+    with open('dynamic_rul_detector.pkl', 'rb') as f:
+        detector = pickle.load(f)
     
-    phi0, alpha, beta, gamma = params
-    print("Initial model parameters:")
-    print(f"phi0 = {phi0:.4f}, alpha = {alpha:.4f}, beta = {beta:.4f}, gamma = {gamma:.4f}")
-    print(f"Fail_idx_MA = {Fail_idx_MA}, RUL_start_idx = {RUL_start_idx}")
+    # 從斷點資料開始更新    
+    for i, (hi, ts) in enumerate(zip(torque_timelist[test_idx:], motor_time_list["Time stamps"][test_idx:])):
+        rul = detector.update(hi, ts, is_test=True)
+        # 儲存 class 實例
+        with open('dynamic_rul_detector.pkl', 'wb') as f:
+            pickle.dump(detector, f)
+        if rul==0:
+            print(f"RUL 結束於全域觀測第 {i} 筆")
+            break
 
 
-    # Call the function
-    plt_helper.plot_curve_fitting(x_fit_relative, y_fit, model_func, params)
-    plt_helper.plot_rul_validation(filtered_time, ema_data, x_fit, x_fit_relative, params, model_func,
-                    RUL_start_idx, Fail_idx_MA, rul_start_thres, RUL_thres, mk_Z)
-
-    #%% RLS Tracking 建立迴歸矩陣並遞迴擬合
-
-    Beta = 0.99
-    P0 = 5 * np.eye(3)
-    x_initial = np.array([phi0, alpha, beta])
-
-
-    track_range = np.arange(RUL_start_idx + 1, Fail_idx_MA + 1)
-    t = filtered_time[track_range] - filtered_time[RUL_start_idx - MK_window]
-    h_exp = np.stack([np.ones_like(t), t, 1 / (t + gamma)], axis=1)
-
-    y_target = ema_data[track_range]
-
-    X_est = []
-    y_hat = []
-    P = P0.copy()
-    x = x_initial.copy()
-
-    for i in range(len(t)):
-        h = h_exp[i].reshape(-1, 1)
-        y = y_target[i]
-        y_pred = np.dot(h.T, x.reshape(-1, 1))[0, 0]
-        e = y - y_pred
-        K = P @ h / (Beta + h.T @ P @ h)
-        x = x + (K.flatten() * e)
-        P = (np.eye(3) - K @ h.T) @ P / Beta
-        y_hat.append(y_pred)
-        X_est.append(x.copy())
-
-    X_est = np.array(X_est)
-    y_hat = np.array(y_hat)
-    print("RLS completed.")
-
-    plt_helper.plot_rls_tracking(t, y_target, y_hat)
-
-    #%% 預測失效時間 (RUL)
-
-    fail_time_pred = []
-    for i, x_hat in enumerate(X_est):
-        phi0_i, alpha_i, beta_i = x_hat
-        def f_eq(x):
-            return phi0_i + alpha_i * x + beta_i / (x + gamma) - RUL_thres
-        try:
-            sol = fsolve(f_eq, x0=10000)[0]
-            if sol > 0:
-                fail_time_pred.append(sol + filtered_time[RUL_start_idx - MK_window])
-            else:
-                fail_time_pred.append(np.nan)
-        except:
-            fail_time_pred.append(np.nan)
-
-    fail_time_pred = np.array(fail_time_pred)
-
-
-    # %% # === 圖形繪製 ===
-    # Call the functions
-    plt_helper.plot_original_data(raw_time, torque_timelist, filtered_idx, filtered_time, filtered_data, device_number, start_date, end_date)
-    plt_helper.plot_ewma_data(filtered_time, filtered_data, ema_data, device_number, start_date, end_date)
-    plt_helper.plot_mk_values(filtered_time, mk_Z)
-    plt_helper.plot_curve_tracking(t, y_target,y_hat)
-
-    #%% RLS 預測失效時間圖
-
-    time_to_failure = fail_time_pred - (t + filtered_time[RUL_start_idx - MK_window])
-    actual_failure_time = filtered_time[Fail_idx_MA] - (t + filtered_time[RUL_start_idx - MK_window])
-
-    # Calculate SMAPE for time_to_failure predictions
-    valid_predictions = ~np.isnan(time_to_failure)
-    smape, csmape = get_smape_and_csmape(time_to_failure[valid_predictions], actual_failure_time[valid_predictions], t-t[0])
-    print(f"SMAPE/SMAPE  for RUL predictions: {smape:.2f}/{csmape:.2f}%")
-
-    plt_helper.plot_failure_prediction(t, time_to_failure, alpha=0.2)
-
-
-    #%% 預測曲線動畫儲存並播放，含交會點與 HI 歷程顯示 (模擬 plotIntersectionAnimation 功能)
-
-    # Check if animation files exist
-    gif_path = os.path.join("..", "animations", "rul_prediction_animation.gif")
-    mp4_path = os.path.join("..", "animations", "rul_prediction_animation.mp4")
-    html_path = os.path.join("..", "animations", "rul_prediction_animation.html")
-
-    if os.path.exists(html_path) and os.path.exists(mp4_path):
-        print("Loading existing animation files...")
-        # Display existing MP4 file
-        # display(display_mp4(mp4_path))
-        # Display existing HTML file
-        with open(html_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        display(HTML(html_content))
-    else:
-        print("Creating new animation files...")
-        # Create new animations
-        animation_html, rul_gif, rul_mp4 = create_rul_prediction_animation(
-            X_est, ema_data, y_hat, RUL_thres, filtered_time, RUL_start_idx, MK_window, gamma
-        )
-        # Display the newly created MP4
-        # display(display_mp4(rul_mp4))
-        with open(html_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        display(HTML(html_content))
-
-
-    # %% 
+    # # 檢查 dynamic_rul_detector.pkl 檔案是否存在
+    # if os.path.exists('dynamic_rul_detector.pkl') and test_idx not 0:
+    #     # 如果存在則讀取已有的 detector
+    #     print("Loading existing detector...")
+    #     with open('dynamic_rul_detector.pkl', 'rb') as f:
+    #         detector = pickle.load(f)
+    # else:
+    #     # 如果不存在則建立新的 detector
+    #     print("Creating new detector...")
+    #     detector = DynamicRULDetector(
+    #         mk_window_size=50,
+    #         ema_coeff=0.1, 
+    #         filt_window=10,
+    #         filt_n_std=2.5,
+    #         mk_epsilon=0.0,
+    #         start_thres_ratio=0.95
+    #     )
+        
+    
+    
+    
+ 
